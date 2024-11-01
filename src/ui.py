@@ -1,10 +1,10 @@
 from customtkinter import *
-from tkinter import messagebox
-import time,os
+from tkinter import messagebox, TclError
+import time
+import os
 from .pyufodb import Relative_DB
 from .otherFunc import githubLink, AuthorLink, NewsLink
 from .dbEditor import DBEditor
-
 import shutil
 from tkinter import filedialog
 
@@ -14,31 +14,68 @@ class DatabaseApp(CTk):
         self.title("Database Interface")
         self.geometry("900x600")
         self.saves_dir = "src/saves"
+        self.gradient_colors = [(78, 84, 200), (143, 148, 251)]
+        self.current_color_index = 0
         self.load_frame()
 
+        self.create_btn = CTkButton(self.create_db_frame, text="Создать базу данных", command=self.create_new_db)
+        self.create_btn.pack(padx=5, pady=(10, 5))
+        self.animate_gradient_button(self.create_btn)
+
+    def animate_gradient_button(self, button, step=0):
+        if step < 100:
+            r1, g1, b1 = self.gradient_colors[self.current_color_index]
+            r2, g2, b2 = self.gradient_colors[(self.current_color_index + 1) % len(self.gradient_colors)]
+
+            r = int(r1 + (r2 - r1) * (step / 100))
+            g = int(g1 + (g2 - g1) * (step / 100))
+            b = int(b1 + (b2 - b1) * (step / 100))
+            color = f"#{r:02x}{g:02x}{b:02x}"
+            button.configure(fg_color=color)
+
+            self.after_id = self.after(20, self.animate_gradient_button, button, step + 1)
+        else:
+            self.current_color_index = (self.current_color_index + 1) % len(self.gradient_colors)
+            self.after_id = self.after(200, self.animate_gradient_button, button)
+
+
     def init_create_db_frame(self):
-        # Поле для ввода названия базы данных
         CTkLabel(self.create_db_frame, text="Название базы данных:").pack(padx=5, pady=(5, 0))
         self.db_name_entry = CTkEntry(self.create_db_frame)
         self.db_name_entry.pack(padx=5, pady=5)
 
-        # Ползунок для выбора количества строк
+        # Ползунок для выбора количества строк (1-20)
         CTkLabel(self.create_db_frame, text="Количество строк:").pack(padx=5, pady=(5, 0))
-        self.row_scale = CTkSlider(self.create_db_frame, from_=1, to=100, number_of_steps=99)
+        self.row_scale = CTkSlider(self.create_db_frame, from_=1, to=20, number_of_steps=19,
+                                    command=self.update_row_count)
+        self.row_scale.set(1) 
         self.row_scale.pack(padx=5, pady=5)
 
-        # Ползунок для выбора количества столбцов
+        self.row_count_label = CTkLabel(self.create_db_frame, text="1")  
+        self.row_count_label.pack(padx=5, pady=(0, 10))
+
         CTkLabel(self.create_db_frame, text="Количество столбцов:").pack(padx=5, pady=(5, 0))
-        self.column_scale = CTkSlider(self.create_db_frame, from_=1, to=26, number_of_steps=25)  # 26 столбцов (a-z)
+        self.column_scale = CTkSlider(self.create_db_frame, from_=1, to=20, number_of_steps=19,
+                                    command=self.update_column_count)
+        self.column_scale.set(1)  
         self.column_scale.pack(padx=5, pady=5)
 
-        # Кнопка для создания базы данных
-        CTkButton(self.create_db_frame, text="Создать базу данных", command=self.create_new_db).pack(padx=5, pady=(10, 5))
+        self.column_count_label = CTkLabel(self.create_db_frame, text="1")
+        self.column_count_label.pack(padx=5, pady=(0, 10))
+
+    def update_row_count(self, value):
+        self.row_count_label.configure(text=str(int(float(value))))
+
+    def update_column_count(self, value):
+        self.column_count_label.configure(text=str(int(float(value))))
+
+
+
 
     def create_new_database(self):
-        
         self.create_db_frame.pack(padx=5, pady=5, fill=BOTH, expand=True)
         self.init_create_db_frame()
+        self.after_cancel(self.after_id)
 
     def create_new_db(self):
         db_name = self.db_name_entry.get().strip()
@@ -105,7 +142,8 @@ class DatabaseApp(CTk):
 
     def load_im(self):
         self.create_btn = CTkButton(self.interface_menu_frame, text="Create new Table (.ufo)", width=160, height=40,
-                  command=lambda: self.create_new_database()).pack(side=LEFT, padx=5, pady=5)
+                  command=lambda: self.create_new_database())
+        self.create_btn.pack(side=LEFT, padx=5, pady=5)
         CTkButton(self.interface_menu_frame, text="Load Table (.ufo)", width=160, height=40,
                   command=self.load_file_dialog).pack(side=LEFT, padx=(0, 5), pady=5)
         
@@ -116,6 +154,8 @@ class DatabaseApp(CTk):
         CTkButton(self.bbar, width=100, text="Authors", command=githubLink).pack(fill=X, expand=True, side=LEFT, padx=(9, 0))
         CTkButton(self.bbar, width=100, text="GitHub", command=AuthorLink).pack(fill=X, expand=True, side=LEFT, padx=5)
         CTkButton(self.bbar, width=100, text="News", command=NewsLink).pack(fill=X, expand=True, side=LEFT, padx=(0, 9))
+
+        self.animate_gradient_button(self.create_btn)
 
     def load_file_manager(self):
         CTkLabel(self.file_toolbar_frame, text="Saved Databases:", width=self._current_width // 1.7).pack(padx=5, pady=(5, 0))
@@ -128,9 +168,11 @@ class DatabaseApp(CTk):
         self.refresh_file_list()
 
     def refresh_file_list(self):
-        # Очищаем предыдущий список файлов
         for widget in self.file_list_frame.winfo_children():
             widget.destroy()
+
+        if not os.path.exists(self.saves_dir):
+            os.makedirs(self.saves_dir)
 
         for filename in os.listdir(self.saves_dir):
             if filename.endswith(".ufo"):
@@ -145,10 +187,28 @@ class DatabaseApp(CTk):
                 file_label.pack(side=LEFT, fill=X, expand=True, padx=5)
                 CTkLabel(file_frame, text=formatted_time, width=100, anchor="e").pack(side=RIGHT, padx=5)
 
-                # Обработка клика для открытия файла
-                file_label.bind("<Button-1>", lambda event, filepath=filepath: self.open_db_editor(filepath))
+                # Bind click to open file
+                file_label.bind("<Button-1>", lambda event, fp=filepath: self.open_db_editor(fp))
                 file_label.bind("<Enter>", lambda event: file_label.configure(cursor="hand2"))
                 file_label.bind("<Leave>", lambda event: file_label.configure(cursor=""))
+                
+                try:
+                    delete_button = CTkButton(file_frame, text="X", width=25, height=25,
+                                                command=lambda fp=filepath: self.delete_database(fp))
+                except TclError:
+                    delete_button = CTkButton(file_frame, text="X", width=25, height=25,
+                                                command=lambda fp=filepath: self.delete_database(fp))
+                delete_button.pack(side=RIGHT, padx=(0, 5))
+
+
+    def delete_database(self, filepath):
+        if messagebox.askyesno("Подтверждение", f"Вы уверены, что хотите удалить базу данных {os.path.basename(filepath)}?"):
+            try:
+                os.remove(filepath)
+                messagebox.showinfo("Успешно", "База данных удалена.")
+                self.refresh_file_list() 
+            except OSError as e:
+                messagebox.showerror("Ошибка", f"Не удалось удалить базу данных: {e}")            
 
     def load_file_dialog(self):
         file_path = filedialog.askopenfilename(title="Select a UFO file", filetypes=[("UFO Files", "*.ufo")])
