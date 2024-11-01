@@ -1,6 +1,4 @@
-<div align="center">
-![](https://freegifimg.com/download/ufo/279916-ufo-free-clipart-hd.gif](https://media1.tenor.com/m/SrJ7qdCO1LAAAAAd/space-alien.gif)
-</div>
+<img src="https://freegifimg.com/download/ufo/279916-ufo-free-clipart-hd.gif" style="display: block; margin-left: auto; margin-right: auto;">
 
 ![{39099866-7B30-4F08-8070-6B69834A0883}](https://github.com/user-attachments/assets/348c5032-39e6-4309-9cdf-2bd106de2240)
 
