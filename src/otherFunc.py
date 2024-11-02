@@ -9,3 +9,9 @@ def AuthorLink():
 
 def NewsLink():
     pass
+
+def openPrivacyPolicy():
+    ont("https://github.com/atxxxm/UFO-DB-APP/blob/main/Privacy%20Policy.md")
+
+def openTermsofUse():
+    ont("https://github.com/atxxxm/UFO-DB-APP/blob/main/TermsOfUse.md")
