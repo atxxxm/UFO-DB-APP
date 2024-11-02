@@ -22,6 +22,9 @@ class DatabaseApp(CTk):
         self.create_btn.pack(padx=5, pady=(10, 5))
         self.animate_gradient_button(self.create_btn)
 
+        self.version_label = CTkLabel(self, text="Версия 1.2.0", font=("Arial", 10), fg_color="#2b2b2b")
+        self.version_label.place(relx=0.0, rely=1.0, anchor="sw", x=20, y=-20) 
+
     def animate_gradient_button(self, button, step=0):
         if step < 100:
             r1, g1, b1 = self.gradient_colors[self.current_color_index]
