@@ -1,5 +1,5 @@
-from src.ui import DatabaseApp
+from src.menu import StartWindow
 
 if __name__ == "__main__":
-    app = DatabaseApp()
+    app = StartWindow()
     app.mainloop()
