@@ -1,7 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from PIL import Image
-
+from .account import UserProfileApp
 from .ui import DatabaseApp 
 from .otherFunc import openPrivacyPolicy, openTermsofUse
 
@@ -66,12 +66,15 @@ class StartWindow(ctk.CTk):
         account_canvas.create_oval(2, 2, 38, 38, fill="gray", outline="")
         account_canvas.create_text(20, 20, text="👤", font=("Arial", 18), fill="white")
 
-        account_frame.bind("<Button-1>", lambda e: print("Вход в аккаунт"))
+        account_canvas.bind("<Button-1>", lambda e: self.openAccount())
+
+    def openAccount(self):
+        self.profile_window = UserProfileApp(self) 
+        self.profile_window.grab_set()
 
     def open_database_app(self):
-        database_app = DatabaseApp()
-        self.destroy()  
-        database_app.mainloop()
+        database_app = DatabaseApp(self)
+        self.withdraw()
 
 if __name__ == "__main__":
     start_window = StartWindow()

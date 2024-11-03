@@ -3,7 +3,7 @@ from tkinter import messagebox, simpledialog
 import os
 from .commands import execute_command
 from .pyufodb import Relative_DB
-
+from .CTkXYFrame import CTkXYFrame
 
 class DBEditor(CTkToplevel):
     def __init__(self, parent, db_file):
@@ -48,39 +48,38 @@ class DBEditor(CTkToplevel):
             self.populate_table() # Refresh display
 
     def create_table_frame(self):
-        self.TableFrame = CTkScrollableFrame(self)
-        self.TableFrame.pack(fill=BOTH, expand=True, padx=5, pady=5)
+        self.table_frame = CTkXYFrame(self)
+        self.table_frame.pack(fill=BOTH, expand=True, padx=5, pady=5)
+
         self.entry_grid = {}
 
-
     def populate_table(self):
-        for child in self.TableFrame.winfo_children():
+        # Clear the inner frame's children, not the canvas
+        for child in self.table_frame.winfo_children():
             child.destroy()
 
         columns = self.table.columns + ["id"]
 
         for j, col in enumerate(columns):
-            textbox = CTkTextbox(self.TableFrame, width=100, height=25, wrap="word")
-            textbox.insert("0.0", col) 
-            textbox.grid(row=0, column=j, padx=2, pady=2, sticky="nsew")  
-            self.entry_grid[(-1, j)] = textbox 
-
+            textbox = CTkTextbox(self.table_frame, width=100, height=25, wrap="word")  # Add to inner frame
+            textbox.insert("0.0", col)
+            textbox.grid(row=0, column=j, padx=2, pady=2, sticky="nsew")
+            self.entry_grid[(-1, j)] = textbox
             textbox.bind("<Double-Button-1>", lambda event, col_index=j: self.confirm_delete_column(col_index))
 
         for i, record in enumerate(self.table.records):
             for j, col in enumerate(columns):
-                textbox = CTkTextbox(self.TableFrame, width=100, height=25, wrap="word")
+                textbox = CTkTextbox(self.table_frame, width=100, height=25, wrap="word") # Add to inner frame
                 textbox.insert("0.0", record.get_field(col))
-                textbox.grid(row=i + 1, column=j, padx=2, pady=2, sticky="nsew")  
+                textbox.grid(row=i + 1, column=j, padx=2, pady=2, sticky="nsew")
                 self.entry_grid[(i, j)] = textbox
-
                 textbox.bind("<Double-Button-1>", lambda event, row_index=i: self.confirm_delete_row(row_index))
 
-        for i in range(len(self.table.records) + 1):  
-            self.TableFrame.columnconfigure(i, weight=1)
+        # Configure inner frame's rows and columns, not canvas
+        for i in range(len(self.table.records) + 1):
+            self.table_frame.rowconfigure(i, weight=1) 
         for j in range(len(columns)):
-            self.TableFrame.rowconfigure(j, weight=1)
-
+            self.table_frame.columnconfigure(j, weight=1)
 
     def confirm_delete_row(self, row):
         if messagebox.askyesno("Подтверждение удаления", "Вы уверены, что хотите удалить эту строку?"):

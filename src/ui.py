@@ -2,13 +2,15 @@ from customtkinter import *
 from tkinter import messagebox, TclError
 import time
 import os
-from .pyufodb import Relative_DB
-from .otherFunc import githubLink, AuthorLink, NewsLink
-from .dbEditor import DBEditor
+from src.pyufodb import Relative_DB
+from src.otherFunc import githubLink, AuthorLink
+from src.dbEditor import DBEditor
+from .ai import create_ai_frame
 import shutil
 from tkinter import filedialog
 
-class DatabaseApp(CTk):
+
+class DatabaseApp(CTkToplevel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title("Database Interface")
@@ -16,11 +18,9 @@ class DatabaseApp(CTk):
         self.saves_dir = "src/saves"
         self.gradient_colors = [(78, 84, 200), (143, 148, 251)]
         self.current_color_index = 0
-        self.load_frame()
+        self.create_db_frame = None 
 
-        self.create_btn = CTkButton(self.create_db_frame, text="Создать базу данных", command=self.create_new_db)
-        self.create_btn.pack(padx=5, pady=(10, 5))
-        self.animate_gradient_button(self.create_btn)
+        self.load_frame()
 
     def animate_gradient_button(self, button, step=0):
         if step < 100:
@@ -38,13 +38,11 @@ class DatabaseApp(CTk):
             self.current_color_index = (self.current_color_index + 1) % len(self.gradient_colors)
             self.after_id = self.after(200, self.animate_gradient_button, button)
 
-
     def init_create_db_frame(self):
         CTkLabel(self.create_db_frame, text="Название базы данных:").pack(padx=5, pady=(5, 0))
         self.db_name_entry = CTkEntry(self.create_db_frame)
         self.db_name_entry.pack(padx=5, pady=5)
 
-        # Ползунок для выбора количества строк (1-20)
         CTkLabel(self.create_db_frame, text="Количество строк:").pack(padx=5, pady=(5, 0))
         self.row_scale = CTkSlider(self.create_db_frame, from_=1, to=20, number_of_steps=19,
                                     command=self.update_row_count)
@@ -63,14 +61,14 @@ class DatabaseApp(CTk):
         self.column_count_label = CTkLabel(self.create_db_frame, text="1")
         self.column_count_label.pack(padx=5, pady=(0, 10))
 
+        self.create_button = CTkButton(self.create_db_frame,text="create",command=lambda: self.create_new_db())
+        self.create_button.pack()
+        
     def update_row_count(self, value):
         self.row_count_label.configure(text=str(int(float(value))))
 
     def update_column_count(self, value):
         self.column_count_label.configure(text=str(int(float(value))))
-
-
-
 
     def create_new_database(self):
         self.create_db_frame.pack(padx=5, pady=5, fill=BOTH, expand=True)
@@ -112,9 +110,10 @@ class DatabaseApp(CTk):
         names = []
         for i in range(count):
             name = ""
-            while i >= 0:
-                name = chr((i % 26) + 97) + name  # 97 - ASCII 'a'
-                i = (i // 26) - 1
+            num = i
+            while num >= 0:
+                name = chr(num % 26 + ord('a')) + name
+                num = num // 26 - 1 
             names.append(name)
         
         return names
@@ -127,9 +126,9 @@ class DatabaseApp(CTk):
         self.resizable(False, False)
         self.start_frame = CTkFrame(self)
         self.start_frame.pack(padx=5, pady=5, fill=BOTH, expand=True)
-        self.file_manager = CTkFrame(self.start_frame, width=self._current_width // 1.7)
+        self.file_manager = CTkFrame(self.start_frame, width=self.winfo_width() // 1.7)
         self.file_manager.pack(padx=5, pady=5, side=LEFT, fill=Y)
-        self.file_toolbar_frame = CTkFrame(self.file_manager, height=50, width=self._current_width // 1.7)
+        self.file_toolbar_frame = CTkFrame(self.file_manager, height=50, width=self.winfo_width() // 1.7)
         self.file_toolbar_frame.pack(padx=5, pady=5, fill=X)
         self.interface_menu = CTkFrame(self.start_frame)
         self.interface_menu.pack(padx=(0, 5), pady=5, side=LEFT, fill=BOTH, expand=True)
@@ -139,6 +138,18 @@ class DatabaseApp(CTk):
         self.interface_bottom_frame.pack(side=BOTTOM, padx=5, pady=5, fill=X)
         self.load_im()
         self.load_file_manager()
+
+    def AI(self):
+        ai_window = CTkToplevel(self)  
+        ai_window.title("ИИ")
+        ai_window.geometry("600x500")
+        ai_window.transient(self) 
+        ai_window.lift() 
+
+
+        ai_frame = create_ai_frame(ai_window)
+        ai_frame.pack(fill=BOTH, expand=True)
+
 
     def load_im(self):
         self.create_btn = CTkButton(self.interface_menu_frame, text="Create new Table (.ufo)", width=160, height=40,
@@ -153,12 +164,12 @@ class DatabaseApp(CTk):
         self.bbar.pack(side=BOTTOM)
         CTkButton(self.bbar, width=100, text="Authors", command=githubLink).pack(fill=X, expand=True, side=LEFT, padx=(9, 0))
         CTkButton(self.bbar, width=100, text="GitHub", command=AuthorLink).pack(fill=X, expand=True, side=LEFT, padx=5)
-        CTkButton(self.bbar, width=100, text="News", command=NewsLink).pack(fill=X, expand=True, side=LEFT, padx=(0, 9))
+        CTkButton(self.bbar, width=100, text="AI", command=self.AI).pack(fill=X, expand=True, side=LEFT, padx=(0, 9))
 
         self.animate_gradient_button(self.create_btn)
 
     def load_file_manager(self):
-        CTkLabel(self.file_toolbar_frame, text="Saved Databases:", width=self._current_width // 1.7).pack(padx=5, pady=(5, 0))
+        CTkLabel(self.file_toolbar_frame, text="Saved Databases:", width=self.winfo_width() // 1.7).pack(padx=5, pady=(5, 0))
         self.file_list_frame = CTkScrollableFrame(self.file_manager)
         self.file_list_frame.pack(padx=5, pady=5, fill=BOTH, expand=True)
 
@@ -187,7 +198,6 @@ class DatabaseApp(CTk):
                 file_label.pack(side=LEFT, fill=X, expand=True, padx=5)
                 CTkLabel(file_frame, text=formatted_time, width=100, anchor="e").pack(side=RIGHT, padx=5)
 
-                # Bind click to open file
                 file_label.bind("<Button-1>", lambda event, fp=filepath: self.open_db_editor(fp))
                 file_label.bind("<Enter>", lambda event: file_label.configure(cursor="hand2"))
                 file_label.bind("<Leave>", lambda event: file_label.configure(cursor=""))
@@ -216,7 +226,6 @@ class DatabaseApp(CTk):
             self.refresh_file_list()
 
     def copy_file_to_saves(self, file_path):
-        # Копируем файл в папку saves
         filename = os.path.basename(file_path)
         dest_path = os.path.join(self.saves_dir, filename)
         try:
@@ -225,9 +234,11 @@ class DatabaseApp(CTk):
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось скопировать файл: {e}")
 
+    
     def open_db_editor(self, db_file):
         DBEditor(self, db_file)
 
 if __name__ == "__main__":
-    app = DatabaseApp()
+    root = CTk()
+    app = DatabaseApp(root)
     app.mainloop()
