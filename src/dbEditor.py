@@ -3,11 +3,12 @@ from tkinter import messagebox, simpledialog
 import os
 from .commands import execute_command
 from .pyufodb import Relative_DB
-
+from .CTkXYFrame import CTkXYFrame
 
 class DBEditor(CTkToplevel):
     def __init__(self, parent, db_file):
         super().__init__(parent)
+        self.transient(parent)
         self.title("DB Editor")
         self.db_file = db_file
         self.db = Relative_DB()
@@ -27,8 +28,7 @@ class DBEditor(CTkToplevel):
         toolbar.pack(fill=X, padx=5, pady=5)
         CTkButton(toolbar, text="Save", command=self.save_changes).pack(side=LEFT, padx=5)
         CTkButton(toolbar, text="Add Row", command=self.add_row).pack(side=LEFT, padx=5)
-        CTkButton(toolbar, text="Remove Row", command=self.remove_row).pack(side=LEFT, padx=5)
-        CTkButton(toolbar, text="Add Column", command=self.add_column).pack(side=LEFT, padx=5)  # Add Column button
+        CTkButton(toolbar, text="Add Column", command=self.add_column).pack(side=LEFT, padx=5)
 
 
 
@@ -48,40 +48,75 @@ class DBEditor(CTkToplevel):
             self.populate_table() # Refresh display
 
     def create_table_frame(self):
-        self.TableFrame = CTkScrollableFrame(self)
-        self.TableFrame.pack(fill=BOTH, expand=True, padx=5, pady=5)
+        self.table_frame = CTkXYFrame(self)
+        self.table_frame.pack(fill=BOTH, expand=True, padx=5, pady=5)
+
         self.entry_grid = {}
 
-
     def populate_table(self):
-        for child in self.TableFrame.winfo_children():
+        # Clear the inner frame's children, not the canvas
+        for child in self.table_frame.winfo_children():
             child.destroy()
 
         columns = self.table.columns + ["id"]
 
-        # Add header row (column names)
         for j, col in enumerate(columns):
-            textbox = CTkTextbox(self.TableFrame, width=100, height=25, wrap="word")
-            textbox.insert("0.0", col)  # Insert column name
-            textbox.grid(row=0, column=j, padx=2, pady=2, sticky="nsew")  # Row 0 for header
-            self.entry_grid[(-1, j)] = textbox # Store header textboxes with negative row index
+            textbox = CTkTextbox(self.table_frame, width=100, height=25, wrap="word")  # Add to inner frame
+            textbox.insert("0.0", col)
+            textbox.grid(row=0, column=j, padx=2, pady=2, sticky="nsew")
+            self.entry_grid[(-1, j)] = textbox
+            textbox.bind("<Double-Button-1>", lambda event, col_index=j: self.confirm_delete_column(col_index))
 
-
-        # Add data rows
         for i, record in enumerate(self.table.records):
             for j, col in enumerate(columns):
-                textbox = CTkTextbox(self.TableFrame, width=100, height=25, wrap="word")
+                textbox = CTkTextbox(self.table_frame, width=100, height=25, wrap="word") # Add to inner frame
                 textbox.insert("0.0", record.get_field(col))
-                textbox.grid(row=i + 1, column=j, padx=2, pady=2, sticky="nsew") # Row i+1 to account for header
+                textbox.grid(row=i + 1, column=j, padx=2, pady=2, sticky="nsew")
                 self.entry_grid[(i, j)] = textbox
+                textbox.bind("<Double-Button-1>", lambda event, row_index=i: self.confirm_delete_row(row_index))
 
-
-        # Configure grid weights (include header row)
-        for i in range(len(self.table.records) + 1):  # +1 for header
-            self.TableFrame.columnconfigure(i, weight=1)
+        # Configure inner frame's rows and columns, not canvas
+        for i in range(len(self.table.records) + 1):
+            self.table_frame.rowconfigure(i, weight=1) 
         for j in range(len(columns)):
-            self.TableFrame.rowconfigure(j, weight=1)
+            self.table_frame.columnconfigure(j, weight=1)
 
+    def confirm_delete_row(self, row):
+        if messagebox.askyesno("Подтверждение удаления", "Вы уверены, что хотите удалить эту строку?"):
+            try:
+                record_id = int(self.entry_grid[(row - 1, len(self.table.columns))].get("1.0", "end-1c"))
+                if self.db.delete_record(self.table_name, record_id):
+                    self.populate_table()
+                    messagebox.showinfo("Успешно", "Запись успешно удалена.")
+                else:
+                    messagebox.showerror("Ошибка", "Не удалось удалить запись.")
+            except ValueError:
+                messagebox.showerror("Ошибка", "Неверный ID записи.")
+
+    def confirm_delete_column(self, col_index):
+        if messagebox.askyesno("Подтверждение удаления", "Вы уверены, что хотите удалить этот столбец?"):
+            try:
+                col_name = self.table.columns[col_index] 
+
+                if col_name == "id": 
+                    messagebox.showwarning("Ошибка", "Нельзя удалить столбец 'id'.")
+                    return
+                
+                del self.table.columns[col_index]
+
+                for record in self.table.records:
+                    if col_name in record.fields:
+                        del record.fields[col_name]
+
+
+                self.db.tables[self.table_name] = self.table  
+                self.db.save_to_file(self.db_file)
+                self.populate_table()
+                messagebox.showinfo("Успешно", "Столбец успешно удален.")
+
+            except IndexError:
+                messagebox.showerror("Ошибка", "Неверный индекс столбца.")
+            
     def save_changes(self):
         # Save column names (header row)
         updated_columns = []
@@ -120,17 +155,17 @@ class DBEditor(CTkToplevel):
         self.db.insert(self.table_name, new_record_data)
         self.populate_table()
 
-    def remove_row(self):
-        try:
-            selected_row = self.TableFrame.focus_get().grid_info()['row']
-            record_id = int(self.entry_grid[(selected_row, len(self.table.columns))].get())
-            if self.db.delete_record(self.table_name, record_id):
-                self.populate_table()
-                messagebox.showinfo("Success", "Record deleted successfully.")
-            else:
-                messagebox.showerror("Error", "Failed to delete record.")
-        except (AttributeError, KeyError, ValueError):
-            messagebox.showwarning("No Row Selected", "Please select a row to delete.")
+    def confirm_delete_row(self, row_index):
+        if messagebox.askyesno("Подтверждение удаления", "Вы уверены, что хотите удалить эту строку?"):
+            try:
+                record_id = int(self.table.records[row_index].get_field("id")) # Get ID directly from the record
+                if self.db.delete_record(self.table_name, record_id):
+                    self.populate_table()
+                    messagebox.showinfo("Успешно", "Запись успешно удалена.")
+                else:
+                    messagebox.showerror("Ошибка", "Не удалось удалить запись.")
+            except (ValueError, IndexError):  # Handle potential errors
+                messagebox.showerror("Ошибка", "Неверный ID записи или индекс строки.")
 
 
     def create_bottombar(self):  # New method to create the bottombar
