@@ -1,3 +1,7 @@
+# Загрузите установщик, для быстрой загрузки и установки нашего приложения: [download](https://github.com/SL1dee36/UFO-Data-Base-Studio/raw/refs/heads/main/install%20tool/setup.exe)
+
+
+
 <img src="https://media1.tenor.com/m/SrJ7qdCO1LAAAAAd/space-alien.gif" style="display: block; margin-left: auto; margin-right: auto;">
 
 
